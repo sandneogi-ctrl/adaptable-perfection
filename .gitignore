@@ -1,0 +1,19 @@
+# Secrets
+.env
+.env.local
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Node
+node_modules/
+frontend/build/
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+.vscode/

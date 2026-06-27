@@ -1,0 +1,83 @@
+:root {
+  --bg:       #0f172a;
+  --bg2:      #1e293b;
+  --bg3:      #334155;
+  --border:   #334155;
+  --text:     #f1f5f9;
+  --text2:    #94a3b8;
+  --green:    #10b981;
+  --red:      #ef4444;
+  --blue:     #3b82f6;
+  --radius:   10px;
+}
+
+.app { min-height: 100vh; background: var(--bg); }
+
+/* Header */
+.header { background: var(--bg2); border-bottom: 1px solid var(--border); padding: 1rem 1.5rem; position: sticky; top: 0; z-index: 10; }
+.header-inner { max-width: 1400px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.header-title { display: flex; align-items: center; gap: 0.75rem; }
+.header-icon { font-size: 1.75rem; }
+.header-title h1 { font-size: 1.25rem; font-weight: 700; color: var(--text); }
+.header-title p  { font-size: 0.75rem; color: var(--text2); }
+.header-right { display: flex; align-items: center; gap: 0.75rem; }
+
+/* Badge */
+.badge { display: flex; align-items: center; gap: 0.4rem; padding: 0.35rem 0.85rem; border-radius: 999px; font-size: 0.8rem; font-weight: 500; background: var(--bg3); }
+.dot { width: 8px; height: 8px; border-radius: 50%; }
+.dot-open   { background: var(--green); box-shadow: 0 0 6px var(--green); animation: pulse 2s infinite; }
+.dot-closed { background: var(--red); }
+.badge-open   { color: var(--green); }
+.badge-closed { color: var(--red); }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+/* Buttons */
+.btn-refresh { background: var(--blue); color: #fff; border: none; padding: 0.45rem 1rem; border-radius: var(--radius); font-size: 0.85rem; font-weight: 500; cursor: pointer; transition: opacity .2s; }
+.btn-refresh:hover { opacity: .85; }
+.btn-refresh:disabled { opacity: .5; cursor: not-allowed; }
+.btn-retry { display: block; margin: 0.75rem auto 0; background: var(--blue); color: #fff; border: none; padding: 0.4rem 1rem; border-radius: var(--radius); cursor: pointer; }
+
+/* Main */
+.main { max-width: 1400px; margin: 0 auto; padding: 1.5rem; }
+
+/* Closed note */
+.closed-note { background: #1e293b; border-left: 3px solid var(--red); border-radius: var(--radius); padding: 0.75rem 1rem; margin-bottom: 1.25rem; font-size: 0.85rem; color: var(--text2); }
+
+/* Summary */
+.summary-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+.summary-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; }
+.summary-label { font-size: 0.72rem; color: var(--text2); text-transform: uppercase; letter-spacing: .05em; margin-bottom: .35rem; }
+.summary-value { font-size: 1.3rem; font-weight: 700; color: var(--text); }
+.summary-sub   { font-size: 0.78rem; color: var(--text2); margin-top: .2rem; }
+
+/* Tabs */
+.tabs { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap; }
+.tab { background: var(--bg2); border: 1px solid var(--border); color: var(--text2); padding: 0.5rem 1.25rem; border-radius: var(--radius); font-size: 0.875rem; cursor: pointer; transition: all .2s; }
+.tab:hover   { border-color: var(--blue); color: var(--text); }
+.tab-active  { background: var(--blue); border-color: var(--blue); color: #fff; }
+.fetched-at  { margin-left: auto; font-size: 0.75rem; color: var(--text2); }
+
+/* State boxes */
+.state-box { text-align: center; padding: 3rem; color: var(--text2); background: var(--bg2); border-radius: var(--radius); }
+.state-box.error { color: var(--red); }
+
+/* Table */
+.table-wrap { overflow-x: auto; border-radius: var(--radius); border: 1px solid var(--border); }
+.table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+.table thead { background: var(--bg2); }
+.table th { padding: 0.75rem 1rem; text-align: right; color: var(--text2); font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; }
+.table th:nth-child(2) { text-align: left; }
+.table tbody tr { border-top: 1px solid var(--border); transition: background .15s; }
+.table tbody tr:hover { background: var(--bg2); }
+.table td { padding: 0.75rem 1rem; }
+.rank        { color: var(--text2); font-size: 0.8rem; text-align: right; }
+.num         { text-align: right; font-variant-numeric: tabular-nums; }
+.stock-symbol { font-weight: 600; color: var(--text); }
+.stock-name   { font-size: 0.75rem; color: var(--text2); margin-top: 0.1rem; }
+.green { color: var(--green); }
+.red   { color: var(--red); }
+
+@media (max-width: 768px) {
+  .table th:nth-child(n+6), .table td:nth-child(n+6) { display: none; }
+  .summary-grid { grid-template-columns: repeat(2, 1fr); }
+}
