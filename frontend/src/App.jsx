@@ -170,7 +170,40 @@ export default function App() {
             <button className="btn-retry" onClick={load}>Try Again</button>
           </div>
         ) : rows.length === 0 ? (
-          <div className="state-box">No data available.</div>
+          <div className="state-box">
+            {marketStatus && !marketStatus.is_open ? (
+              <>
+                <div style={{fontSize:'2rem', marginBottom:'0.75rem'}}>🕐</div>
+                <div style={{fontSize:'1.1rem', fontWeight:600, marginBottom:'0.5rem'}}>
+                  Market is Currently Closed
+                </div>
+                <div style={{fontSize:'0.875rem', color:'#94a3b8', marginBottom:'1rem'}}>
+                  NSE trading hours: Monday–Friday, 9:15 AM – 3:30 PM IST
+                </div>
+                <div style={{fontSize:'0.825rem', color:'#64748b'}}>
+                  Last session data will appear here once fetched from Angel One.<br/>
+                  Click <strong>Refresh</strong> to load the most recent session data.
+                </div>
+                <button className="btn-retry" onClick={handleRefresh} disabled={refreshing}>
+                  {refreshing ? 'Fetching…' : '⟳ Load Last Session Data'}
+                </button>
+              </>
+            ) : (
+              <>
+                <div style={{fontSize:'2rem', marginBottom:'0.75rem'}}>📭</div>
+                <div style={{fontSize:'1.1rem', fontWeight:600, marginBottom:'0.5rem'}}>
+                  No Data Available
+                </div>
+                <div style={{fontSize:'0.875rem', color:'#94a3b8', marginBottom:'1rem'}}>
+                  Could not fetch stock data from Angel One API.<br/>
+                  This may be due to an expired session or API limit.
+                </div>
+                <button className="btn-retry" onClick={handleRefresh} disabled={refreshing}>
+                  {refreshing ? 'Retrying…' : '⟳ Try Again'}
+                </button>
+              </>
+            )}
+          </div>
         ) : (
           <div className="table-wrap">
             <table className="table">
