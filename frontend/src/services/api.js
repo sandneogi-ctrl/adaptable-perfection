@@ -1,6 +1,8 @@
 import axios from 'axios';
 
-const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+// Use relative URL so it works from any domain
+// The backend is accessible via the private network at: http://backend.railway.internal:8080
+const BASE_URL = process.env.REACT_APP_API_URL || 'http://backend.railway.internal:8080';
 
 const api = axios.create({
   baseURL: BASE_URL,
@@ -14,3 +16,4 @@ export const stocksApi = {
   getMarketSummary:()           => api.get('/api/market-summary').then(r => r.data),
   refresh:         ()           => api.post('/api/refresh').then(r => r.data),
 };
+
