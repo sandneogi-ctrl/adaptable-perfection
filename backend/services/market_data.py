@@ -2,7 +2,7 @@ from SmartApi import SmartConnect
 import pyotp
 import pytz
 import os
-from datetime import datetime, time as dtime
+from datetime import datetime, time as dtime, timedelta
 
 IST = pytz.timezone("Asia/Kolkata")
 
@@ -11,11 +11,6 @@ NAME_MAP = {
     "TCS":        "Tata Consultancy Services",
     "HDFCBANK":   "HDFC Bank",
     "INFY":       "Infosys",
-    "ICICIBANK":  "ICICI Bank",
-    "HINDUNILVR": "Hindustan Unilever",
-    "SBIN":       "State Bank of India",
-    "BHARTIARTL": "Bharti Airtel",
-    "ITC":        "ITC",
 }
 
 NIFTY50_STOCKS = [
@@ -23,14 +18,8 @@ NIFTY50_STOCKS = [
     {"symbol": "TCS",        "token": "11536"},
     {"symbol": "HDFCBANK",   "token": "1333"},
     {"symbol": "INFY",       "token": "1594"},
-    {"symbol": "ICICIBANK",  "token": "4963"},
-    {"symbol": "HINDUNILVR", "token": "1394"},
-    {"symbol": "SBIN",       "token": "3045"},
-    {"symbol": "BHARTIARTL", "token": "10604"},
-    {"symbol": "ITC",        "token": "1660"},
 ]
 
-# Module-level SmartConnect instance — reused across requests
 _smart_api  = None
 _auth_token = None
 
@@ -41,9 +30,24 @@ def get_market_status():
     return {
         "is_open":    is_open,
         "label":      "Market Open" if is_open else "Market Closed",
-        "note":       None if is_open else "Showing last session data. Market is closed.",
+        "note":       None if is_open else "Showing last session historical data. Market is closed.",
         "checked_at": now.strftime("%Y-%m-%d %H:%M:%S IST")
     }
+
+
+def _last_trading_day():
+    """Return last weekday date as string YYYY-MM-DD."""
+    d = datetime.now(IST).date()
+    # Go back until we hit a weekday (Mon-Fri)
+    while d.weekday() >= 5:
+        d -= timedelta(days=1)
+    # If today is a weekday but market hasn't opened yet, use previous day
+    now = datetime.now(IST)
+    if now.weekday() < 5 and now.time() < dtime(9, 15):
+        d -= timedelta(days=1)
+        while d.weekday() >= 5:
+            d -= timedelta(days=1)
+    return d.strftime("%Y-%m-%d")
 
 
 def _login():
@@ -55,7 +59,7 @@ def _login():
         totp_secret = os.environ.get("ANGEL_TOTP_SECRET")
 
         if not all([api_key, client_id, password, totp_secret]):
-            print("[Angel One] ERROR: Missing credentials in environment variables.")
+            print("[Angel One] ERROR: Missing credentials.")
             print(f"  ANGEL_API_KEY     : {'SET' if api_key     else 'MISSING'}")
             print(f"  ANGEL_CLIENT_ID   : {'SET' if client_id   else 'MISSING'}")
             print(f"  ANGEL_PASSWORD    : {'SET' if password    else 'MISSING'}")
@@ -90,68 +94,143 @@ def _ensure_logged_in():
     return True
 
 
+def _fetch_live(stock):
+    """Fetch live market data during market hours."""
+    try:
+        resp = _smart_api.getMarketData({
+            "mode": "FULL",
+            "exchangeTokens": {"NSE": [stock["token"]]}
+        })
+        if resp and resp.get("status") and resp.get("data"):
+            fetched = resp["data"].get("fetched", [])
+            if fetched:
+                d          = fetched[0]
+                ltp        = round(float(d.get("ltp",   0)), 2)
+                close      = round(float(d.get("close", 0)), 2)
+                open_      = round(float(d.get("open",  0)), 2)
+                high       = round(float(d.get("high",  0)), 2)
+                low        = round(float(d.get("low",   0)), 2)
+                volume     = int(d.get("tradeVolume", 0))
+                change     = round(ltp - close, 2) if close else 0
+                change_pct = round((change / close * 100), 2) if close else 0
+                return {
+                    "symbol":         stock["symbol"],
+                    "name":           NAME_MAP.get(stock["symbol"], stock["symbol"]),
+                    "ltp":            ltp,
+                    "open":           open_,
+                    "high":           high,
+                    "low":            low,
+                    "close":          close,
+                    "prev_close":     close,
+                    "change":         change,
+                    "change_percent": change_pct,
+                    "volume":         volume,
+                    "data_type":      "live"
+                }
+    except Exception as e:
+        print(f"[Angel One] Live fetch error {stock['symbol']}: {e}")
+    return None
+
+
+def _fetch_historical(stock):
+    """
+    Fetch last session OHLC via getCandleData.
+    Used when market is closed — always returns last trading day data.
+    Candle format: [timestamp, open, high, low, close, volume]
+    """
+    try:
+        last_day = _last_trading_day()
+        params = {
+            "exchange":    "NSE",
+            "symboltoken": stock["token"],
+            "interval":    "ONE_DAY",
+            "fromdate":    f"{last_day} 09:15",
+            "todate":      f"{last_day} 15:30"
+        }
+        resp = _smart_api.getCandleData(params)
+        if resp and resp.get("status") and resp.get("data"):
+            candles = resp["data"]
+            if len(candles) >= 2:
+                # Last candle = current/last session
+                # Previous candle = day before (for change calculation)
+                curr = candles[-1]
+                prev = candles[-2]
+                open_      = round(float(curr[1]), 2)
+                high       = round(float(curr[2]), 2)
+                low        = round(float(curr[3]), 2)
+                close      = round(float(curr[4]), 2)
+                volume     = int(curr[5])
+                prev_close = round(float(prev[4]), 2)
+                change     = round(close - prev_close, 2)
+                change_pct = round((change / prev_close * 100) if prev_close else 0, 2)
+                return {
+                    "symbol":         stock["symbol"],
+                    "name":           NAME_MAP.get(stock["symbol"], stock["symbol"]),
+                    "ltp":            close,
+                    "open":           open_,
+                    "high":           high,
+                    "low":            low,
+                    "close":          close,
+                    "prev_close":     prev_close,
+                    "change":         change,
+                    "change_percent": change_pct,
+                    "volume":         volume,
+                    "data_type":      "historical"
+                }
+            elif len(candles) == 1:
+                # Only one candle — no prev close available
+                curr = candles[0]
+                close = round(float(curr[4]), 2)
+                return {
+                    "symbol":         stock["symbol"],
+                    "name":           NAME_MAP.get(stock["symbol"], stock["symbol"]),
+                    "ltp":            close,
+                    "open":           round(float(curr[1]), 2),
+                    "high":           round(float(curr[2]), 2),
+                    "low":            round(float(curr[3]), 2),
+                    "close":          close,
+                    "prev_close":     close,
+                    "change":         0.0,
+                    "change_percent": 0.0,
+                    "volume":         int(curr[5]),
+                    "data_type":      "historical"
+                }
+        print(f"[Angel One] No historical data for {stock['symbol']}")
+    except Exception as e:
+        print(f"[Angel One] Historical fetch error {stock['symbol']}: {e}")
+    return None
+
+
 def fetch_nifty50():
     """
-    Fetch all 50 Nifty stocks from Angel One SmartAPI.
-    Uses getMarketData (live during market hours).
+    Fetch all Nifty50 stocks.
+    - Market OPEN  → live getMarketData (real-time LTP)
+    - Market CLOSED → historical getCandleData (last session OHLC)
     No MySQL — pure in-memory.
     """
     if not _ensure_logged_in():
         print("[Angel One] Cannot fetch — not logged in.")
         return []
 
-    print("[Angel One] Fetching Nifty50 market data...")
+    status   = get_market_status()
+    is_open  = status["is_open"]
+    mode     = "LIVE" if is_open else "HISTORICAL"
+    print(f"[Angel One] Fetching in {mode} mode (market {'open' if is_open else 'closed'})...")
+
     results = []
     failed  = 0
 
     for stock in NIFTY50_STOCKS:
-        try:
-            resp = _smart_api.getMarketData({
-                "mode": "FULL",
-                "exchangeTokens": {"NSE": [stock["token"]]}
-            })
-
-            if resp and resp.get("status") and resp.get("data"):
-                fetched = resp["data"].get("fetched", [])
-                if fetched:
-                    d          = fetched[0]
-                    ltp        = round(float(d.get("ltp",   0)), 2)
-                    close      = round(float(d.get("close", 0)), 2)
-                    open_      = round(float(d.get("open",  0)), 2)
-                    high       = round(float(d.get("high",  0)), 2)
-                    low        = round(float(d.get("low",   0)), 2)
-                    volume     = int(d.get("tradeVolume", 0))
-                    change     = round(ltp - close, 2) if close else 0
-                    change_pct = round((change / close * 100), 2) if close else 0
-
-                    results.append({
-                        "symbol":         stock["symbol"],
-                        "name":           NAME_MAP.get(stock["symbol"], stock["symbol"]),
-                        "ltp":            ltp,
-                        "open":           open_,
-                        "high":           high,
-                        "low":            low,
-                        "close":          close,
-                        "prev_close":     close,
-                        "change":         change,
-                        "change_percent": change_pct,
-                        "volume":         volume
-                    })
-                    continue
-
-            # Empty response — market may be closed
+        data = _fetch_live(stock) if is_open else _fetch_historical(stock)
+        if data:
+            results.append(data)
+        else:
             if failed == 0:
-                print(f"[Angel One] Empty response for {stock['symbol']}. "
-                      f"Market may be closed (getMarketData returns blank after hours).")
+                print(f"[Angel One] First failure: {stock['symbol']} in {mode} mode.")
             failed += 1
+            # Reset session on auth errors
+            global _auth_token
+            _auth_token = None if failed > 5 else _auth_token
 
-        except Exception as e:
-            print(f"[Angel One] Error fetching {stock['symbol']}: {e}")
-            # Session expired — force re-login on next call
-            if "token" in str(e).lower() or "auth" in str(e).lower():
-                global _auth_token
-                _auth_token = None
-            failed += 1
-
-    print(f"[Angel One] Done. Fetched {len(results)}/50 stocks. Failed: {failed}.")
+    print(f"[Angel One] Done. Fetched {len(results)}/50. Failed: {failed}.")
     return results
