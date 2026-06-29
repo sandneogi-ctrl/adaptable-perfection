@@ -58,19 +58,22 @@ export default function App() {
   const [error, setError]           = useState(null);
   const [fetchedAt, setFetchedAt]   = useState(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [niftyIndex, setNiftyIndex] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const [g, l, s] = await Promise.all([
+      const [g, l, s, idx] = await Promise.all([
         stocksApi.getTopGainers(10),
         stocksApi.getTopLosers(10),
         stocksApi.getMarketSummary(),
+        stocksApi.getNiftyIndex(),
       ]);
-      if (g.success)  setGainers(g.data);
-      if (l.success)  setLosers(l.data);
-      if (s.success)  setSummary(s.data);
+      if (g.success)   setGainers(g.data);
+      if (l.success)   setLosers(l.data);
+      if (s.success)   setSummary(s.data);
+      if (idx.success) setNiftyIndex(idx);
       const ms = g.market_status || s.market_status;
       if (ms) setMarket(ms);
       setFetchedAt(g.fetched_at || s.fetched_at);
@@ -113,6 +116,15 @@ export default function App() {
             </div>
           </div>
           <div className="header-right">
+            {niftyIndex && niftyIndex.success && (
+              <div className="nifty-index">
+                <span className="nifty-label">NIFTY 50</span>
+                <span className="nifty-value">{niftyIndex.ltp?.toLocaleString('en-IN')}</span>
+                <span className={`nifty-change ${niftyIndex.change_percent >= 0 ? 'green' : 'red'}`}>
+                  {niftyIndex.change_percent >= 0 ? '▲' : '▼'} {Math.abs(niftyIndex.change_percent)}%
+                </span>
+              </div>
+            )}
             {marketStatus && <Badge open={marketStatus.is_open} />}
             <button className="btn-refresh" onClick={handleRefresh} disabled={refreshing}>
               {refreshing ? 'Refreshing…' : '⟳ Refresh'}

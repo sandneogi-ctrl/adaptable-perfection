@@ -13,4 +13,5 @@ export const stocksApi = {
   getAllStocks:     ()           => api.get('/api/all-stocks').then(r => r.data),
   getMarketSummary:()           => api.get('/api/market-summary').then(r => r.data),
   refresh:         ()           => api.post('/api/refresh').then(r => r.data),
+  getNiftyIndex:   ()           => api.get('/api/nifty-index').then(r => r.data),
 };

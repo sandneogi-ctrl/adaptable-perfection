@@ -37,6 +37,12 @@
 .btn-refresh:disabled { opacity: .5; cursor: not-allowed; }
 .btn-retry { display: block; margin: 0.75rem auto 0; background: var(--blue); color: #fff; border: none; padding: 0.4rem 1rem; border-radius: var(--radius); cursor: pointer; }
 
+/* Nifty Index */
+.nifty-index { display: flex; align-items: center; gap: 0.4rem; padding: 0.4rem 0.85rem; background: var(--bg3); border-radius: var(--radius); font-size: 0.85rem; }
+.nifty-label { color: var(--text2); font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+.nifty-value { font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
+.nifty-change { font-weight: 600; font-size: 0.8rem; }
+
 /* Main */
 .main { max-width: 1400px; margin: 0 auto; padding: 1.5rem; }
 

@@ -119,3 +119,44 @@ def refresh():
     except Exception as e:
         print(f"refresh error: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
+
+
+@stocks_bp.route('/api/nifty-index')
+def nifty_index():
+    """Fetch Nifty 50 index value from Angel One."""
+    try:
+        from services.market_data import _login
+        import os
+
+        smart_api = _login()
+        if not smart_api:
+            return jsonify({"success": False, "error": "Login failed"}), 500
+
+        # Nifty 50 index token: 99926000, exchange: NSE
+        resp = smart_api.getMarketData({
+            "mode": "LTP",
+            "exchangeTokens": {"NSE": ["99926000"]}
+        })
+
+        if resp and resp.get("status") and resp.get("data"):
+            fetched = resp["data"].get("fetched", [])
+            if fetched:
+                ltp        = round(float(fetched[0].get("ltp", 0)), 2)
+                close      = round(float(fetched[0].get("close", 0)), 2)
+                change     = round(ltp - close, 2) if close else 0
+                change_pct = round((change / close * 100), 2) if close else 0
+                return jsonify({
+                    "success":        True,
+                    "index":          "NIFTY 50",
+                    "ltp":            ltp,
+                    "close":          close,
+                    "change":         change,
+                    "change_percent": change_pct,
+                    "market_status":  get_market_status()
+                })
+
+        return jsonify({"success": False, "error": "No index data"}), 500
+
+    except Exception as e:
+        print(f"nifty-index error: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
