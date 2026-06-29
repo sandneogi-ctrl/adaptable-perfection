@@ -64,16 +64,14 @@ export default function App() {
     setLoading(true);
     setError(null);
     try {
-      const [g, l, s, idx] = await Promise.all([
+      const [g, l, s] = await Promise.all([
         stocksApi.getTopGainers(10),
         stocksApi.getTopLosers(10),
         stocksApi.getMarketSummary(),
-        stocksApi.getNiftyIndex(),
       ]);
-      if (g.success)   setGainers(g.data);
-      if (l.success)   setLosers(l.data);
-      if (s.success)   setSummary(s.data);
-      if (idx.success) setNiftyIndex(idx);
+      if (g.success)  setGainers(g.data);
+      if (l.success)  setLosers(l.data);
+      if (s.success)  setSummary(s.data);
       const ms = g.market_status || s.market_status;
       if (ms) setMarket(ms);
       setFetchedAt(g.fetched_at || s.fetched_at);
@@ -82,6 +80,13 @@ export default function App() {
       console.error(e);
     } finally {
       setLoading(false);
+    }
+    // Fetch index separately — never blocks main data
+    try {
+      const idx = await stocksApi.getNiftyIndex();
+      if (idx.success) setNiftyIndex(idx);
+    } catch (e) {
+      console.warn('Nifty index fetch failed:', e);
     }
   }, []);
 
